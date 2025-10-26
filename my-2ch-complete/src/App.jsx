@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { generatePrivateKey, getPublicKey, finishEvent, SimplePool } from 'nostr-tools';
+import * as nostrTools from 'nostr-tools';
 import './App.css';
 
 const RELAYS = [
@@ -21,7 +21,7 @@ const BOARDS = [
 function App() {
   const [sk, setSk] = useState('');
   const [pk, setPk] = useState('');
-  const [currentView, setCurrentView] = useState('boardList'); // boardList, threadList, thread
+  const [currentView, setCurrentView] = useState('boardList');
   const [currentBoard, setCurrentBoard] = useState(null);
   const [currentThread, setCurrentThread] = useState(null);
   const [threads, setThreads] = useState([]);
@@ -30,22 +30,16 @@ function App() {
   const [newPost, setNewPost] = useState('');
   const [userName, setUserName] = useState('名無しさん');
   const [uploading, setUploading] = useState(false);
-
-  // SimplePoolをuseEffectで初期化
   const [pool, setPool] = useState(null);
-  
-  useEffect(() => {
-    setPool(new SimplePool());
-  }, []);
 
-  // 鍵の初期化
+  // 鍵とPoolの初期化
   useEffect(() => {
     let savedSk = localStorage.getItem('2ch_sk');
     let savedPk = localStorage.getItem('2ch_pk');
     
     if (!savedSk) {
-      savedSk = generatePrivateKey();
-      savedPk = getPublicKey(savedSk);
+      savedSk = nostrTools.generateSecretKey();
+      savedPk = nostrTools.getPublicKey(savedSk);
       localStorage.setItem('2ch_sk', savedSk);
       localStorage.setItem('2ch_pk', savedPk);
     }
@@ -55,15 +49,17 @@ function App() {
 
     const savedName = localStorage.getItem('userName');
     if (savedName) setUserName(savedName);
+
+    // SimplePool初期化
+    const simplePool = new nostrTools.SimplePool();
+    setPool(simplePool);
   }, []);
 
-  // ユーザー名を保存
   const saveUserName = () => {
     localStorage.setItem('userName', userName);
     alert('名前を保存しました');
   };
 
-  // スレッド一覧を取得
   const loadThreads = (board) => {
     if (!pool) return;
     
@@ -71,7 +67,7 @@ function App() {
     setCurrentView('threadList');
     setThreads([]);
 
-    pool.subscribeMany(
+    const sub = pool.subscribeMany(
       RELAYS,
       [{
         kinds: [1],
@@ -90,7 +86,6 @@ function App() {
     );
   };
 
-  // スレッドを作成
   const createThread = async () => {
     if (!pool) return;
     if (!newThreadTitle.trim()) {
@@ -110,7 +105,7 @@ function App() {
       content: `【${newThreadTitle}】\n\n1 名前: ${userName} ${new Date().toLocaleString()}\nスレ立て`
     };
 
-    const signedEvent = finishEvent(event, sk);
+    const signedEvent = nostrTools.finalizeEvent(event, sk);
 
     try {
       await Promise.any(pool.publish(RELAYS, signedEvent));
@@ -122,18 +117,13 @@ function App() {
     }
   };
 
-  // スレッドを開く
   const openThread = (thread) => {
     if (!pool) return;
     
     setCurrentThread(thread);
     setCurrentView('thread');
-    setPosts([]);
-
-    // スレッド本体を追加
     setPosts([thread]);
 
-    // 返信を取得
     pool.subscribeMany(
       RELAYS,
       [{
@@ -152,7 +142,6 @@ function App() {
     );
   };
 
-  // レスを書き込む
   const writePost = async () => {
     if (!pool) return;
     if (!newPost.trim()) {
@@ -172,7 +161,7 @@ function App() {
       content: `${postNumber} 名前: ${userName} ${new Date().toLocaleString()}\n${newPost}`
     };
 
-    const signedEvent = finishEvent(event, sk);
+    const signedEvent = nostrTools.finalizeEvent(event, sk);
 
     try {
       await Promise.any(pool.publish(RELAYS, signedEvent));
@@ -182,18 +171,6 @@ function App() {
     }
   };
 
-  // スレッドタイトルを抽出
-  const getThreadTitle = (thread) => {
-    const titleTag = thread.tags.find(t => t[0] === 'title');
-    return titleTag ? titleTag[1] : thread.content.split('\n')[0].slice(0, 50);
-  };
-
-  // レス数を取得
-  const getReplyCount = (threadId) => {
-    return posts.filter(p => p.tags.some(t => t[0] === 'e' && t[1] === threadId)).length;
-  };
-
-  // 画像をアップロード（Imgur使用）
   const uploadImage = async (file) => {
     setUploading(true);
     const formData = new FormData();
@@ -203,7 +180,7 @@ function App() {
       const response = await fetch('https://api.imgur.com/3/image', {
         method: 'POST',
         headers: {
-          'Authorization': 'Client-ID 3e7a4deb7ac67da' // 公開用Client ID
+          'Authorization': 'Client-ID 3e7a4deb7ac67da'
         },
         body: formData
       });
@@ -222,7 +199,6 @@ function App() {
     }
   };
 
-  // 画像選択時の処理
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -236,6 +212,11 @@ function App() {
     if (imageUrl) {
       setNewPost(prev => prev + '\n' + imageUrl);
     }
+  };
+
+  const getThreadTitle = (thread) => {
+    const titleTag = thread.tags.find(t => t[0] === 'title');
+    return titleTag ? titleTag[1] : thread.content.split('\n')[0].slice(0, 50);
   };
 
   return (
@@ -254,7 +235,6 @@ function App() {
         </div>
       </header>
 
-      {/* 板一覧 */}
       {currentView === 'boardList' && (
         <div style={contentStyle}>
           <h2>📁 板一覧</h2>
@@ -275,7 +255,6 @@ function App() {
         </div>
       )}
 
-      {/* スレッド一覧 */}
       {currentView === 'threadList' && (
         <div style={contentStyle}>
           <div style={navStyle}>
@@ -286,7 +265,6 @@ function App() {
           
           <h2>📝 {currentBoard.name}</h2>
           
-          {/* 新スレ作成 */}
           <div style={newThreadStyle}>
             <h3>新しいスレッドを立てる</h3>
             <input
@@ -301,7 +279,6 @@ function App() {
             </button>
           </div>
 
-          {/* スレッド一覧 */}
           <div style={{ marginTop: '20px' }}>
             <h3>スレッド一覧 ({threads.length}件)</h3>
             {threads.length === 0 ? (
@@ -325,7 +302,6 @@ function App() {
         </div>
       )}
 
-      {/* スレッド内 */}
       {currentView === 'thread' && (
         <div style={contentStyle}>
           <div style={navStyle}>
@@ -336,10 +312,8 @@ function App() {
 
           <h2>💬 {getThreadTitle(currentThread)}</h2>
 
-          {/* レス表示 */}
           <div style={threadContentStyle}>
-            {posts.map((post, index) => {
-              // URLを検出して画像表示
+            {posts.map((post) => {
               const lines = post.content.split('\n');
               const imageUrls = lines.filter(line => 
                 line.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i)
@@ -380,7 +354,6 @@ function App() {
             })}
           </div>
 
-          {/* 書き込みフォーム */}
           <div style={writeFormStyle}>
             <h3>レスを書く</h3>
             <textarea
