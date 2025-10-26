@@ -1,0 +1,29 @@
+{
+  "name": "company-data-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "企業データ自動収集システム（国税庁+Wikidata+Wikimedia Commons）",
+  "main": "lib/data-collector.js",
+  "scripts": {
+    "test": "node scripts/test-collect.js",
+    "collect": "node scripts/collect-github-action.js",
+    "stats": "node scripts/update-stats.js",
+    "setup": "node scripts/setup/init-database.js",
+    "seed": "node scripts/setup/seed-famous-companies.js"
+  },
+  "keywords": [
+    "data-collection",
+    "corporate-data",
+    "wikidata",
+    "github-actions"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@aws-sdk/client-s3": "^3.490.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.3.1"
+  }
+}
