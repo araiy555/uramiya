@@ -28,9 +28,15 @@ function App() {
   const [posts, setPosts] = useState([]);
   const [newThreadTitle, setNewThreadTitle] = useState('');
   const [newPost, setNewPost] = useState('');
-  const [pool] = useState(() => new SimplePool());
   const [userName, setUserName] = useState('名無しさん');
   const [uploading, setUploading] = useState(false);
+
+  // SimplePoolをuseEffectで初期化
+  const [pool, setPool] = useState(null);
+  
+  useEffect(() => {
+    setPool(new SimplePool());
+  }, []);
 
   // 鍵の初期化
   useEffect(() => {
@@ -59,6 +65,8 @@ function App() {
 
   // スレッド一覧を取得
   const loadThreads = (board) => {
+    if (!pool) return;
+    
     setCurrentBoard(board);
     setCurrentView('threadList');
     setThreads([]);
@@ -84,6 +92,7 @@ function App() {
 
   // スレッドを作成
   const createThread = async () => {
+    if (!pool) return;
     if (!newThreadTitle.trim()) {
       alert('スレッドタイトルを入力してください');
       return;
@@ -115,6 +124,8 @@ function App() {
 
   // スレッドを開く
   const openThread = (thread) => {
+    if (!pool) return;
+    
     setCurrentThread(thread);
     setCurrentView('thread');
     setPosts([]);
@@ -143,6 +154,7 @@ function App() {
 
   // レスを書き込む
   const writePost = async () => {
+    if (!pool) return;
     if (!newPost.trim()) {
       alert('本文を入力してください');
       return;
