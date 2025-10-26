@@ -1,0 +1,21 @@
+/* App.css - 2ch風掲示板専用スタイル */
+
+button:hover {
+  opacity: 0.8;
+}
+
+textarea:focus,
+input:focus {
+  outline: 2px solid #EA8;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .board-item {
+    font-size: 14px;
+  }
+  
+  .thread-item {
+    font-size: 13px;
+  }
+}
